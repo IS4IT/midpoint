@@ -157,7 +157,18 @@ class ConnIdSchemaParser {
 
         private void parse() throws SchemaException {
 
-            for (AttributeInfo connIdAttrInfo : connIdClassInfo.getAttributeInfo()) {
+            // ConnId stores attributes in a HashMap (ObjectClassInfoBuilder), exposed via a HashSet
+            // (ObjectClassInfo). Iteration order is hash-bucket order, which gets baked into the
+            // schema below via the currentAttributeDisplayOrder counter assigned in
+            // parseAttributeInfo(). Sort by attribute name once so the resulting displayOrder
+            // values - and thus the GUI form rendering, the visualizer output, the notification-
+            // email attribute order, and the XSD exposed on GET /resources/{oid} - are
+            // alphabetical instead of hash-bucket order. Connectors with many attributes (200+)
+            // would otherwise produce schemas that are stably scrambled, not stably ordered.
+            List<AttributeInfo> sortedAttributeInfos = new ArrayList<>(connIdClassInfo.getAttributeInfo());
+            sortedAttributeInfos.sort(Comparator.comparing(AttributeInfo::getName));
+
+            for (AttributeInfo connIdAttrInfo : sortedAttributeInfos) {
                 boolean isSpecial = specialAttributes.updateWithAttribute(connIdAttrInfo);
                 if (isSpecial) {
                     continue; // Skip this attribute, the capability presence is sufficient
